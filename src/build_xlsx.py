@@ -67,17 +67,19 @@ def build(order, order_date, rows, out_path):
     ws = wb.active
     ws.title = order.DATE_TEXT
 
-    # ширины столбцов - одинаковая логика для ВСЕХ столбцов данных, без
-    # индивидуального спец-кейса для последних (это была часть жалобы: почему
-    # последние столбцы выглядят иначе - в этой генерации все столбцы строятся
-    # одним циклом). Столбцы данных без индивидуальной ширины получают ту же
-    # "ширину по умолчанию", что и в эталонном файле, а не более узкий дефолт
-    # Excel/openpyxl - иначе они визуально уже, чем в примере.
+    # ширины столбцов - строятся одним циклом для всех столбцов данных (не
+    # спец-кейсом на последние - это была часть жалобы: почему последние
+    # столбцы выглядят иначе). Столбец получает: индивидуальную ширину модуля
+    # заказа (order.COL_WIDTHS, если задана - у некоторых реальных вкладок
+    # столбцы "ОСНОВНОЙ ЗАКАЗ" шире остальных), иначе общую ширину по
+    # умолчанию из эталона (12.6328125 - шире дефолта Excel/openpyxl).
+    order_col_widths = getattr(order, "COL_WIDTHS", {})
     for letter, width in COL_WIDTHS.items():
         ws.column_dimensions[letter].width = width
     for col in columns:
-        if col not in COL_WIDTHS:
-            ws.column_dimensions[col].width = DEFAULT_DATA_COL_WIDTH
+        if col in COL_WIDTHS:
+            continue
+        ws.column_dimensions[col].width = order_col_widths.get(col, DEFAULT_DATA_COL_WIDTH)
 
     # Row 1: полоса упаковки (D - отдельно белая; премиум-столбцы серые; остальные белые)
     _cell(ws, 1, "A", fill=FILL_WHITE)
