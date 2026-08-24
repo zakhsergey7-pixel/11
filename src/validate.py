@@ -8,15 +8,18 @@
 "овощи" (для столбца I) в правилах не формализована и не проверяется - там мы
 полагаемся на предыдущий прецедент.
 
-Запуск: python3 src/validate.py
+Запуск: python3 src/validate.py [модуль_заказа]  (по умолчанию order_grid)
 """
+import importlib
+import sys
+
 from composition import Kitchen
-from order_grid import build_rows, EXCLUDED_CATEGORIES, COMPOSITION_OVERRIDES
 
 
-def run():
-    kitchen = Kitchen(overrides=COMPOSITION_OVERRIDES)
-    rows = build_rows()
+def run(order_module="order_grid"):
+    order = importlib.import_module(order_module)
+    kitchen = Kitchen(overrides=order.COMPOSITION_OVERRIDES)
+    rows = order.build_rows()
     problems = []
     unknown_dishes = []
 
@@ -27,7 +30,7 @@ def run():
             continue
         tags = kitchen.tags(row["name"])
         for col in row["cols"]:
-            excluded = EXCLUDED_CATEGORIES.get(col, set())
+            excluded = order.EXCLUDED_CATEGORIES.get(col, set())
             hit = tags & excluded
             if hit:
                 problems.append((row["name"], col, sorted(hit)))
@@ -49,4 +52,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    run(sys.argv[1] if len(sys.argv) > 1 else "order_grid")

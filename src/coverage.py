@@ -1,26 +1,15 @@
 """
 Проверка покрытия: для каждого блока "base-строка + следующие за ней alt-строки"
 (один курс одного приёма пищи) объединение назначенных столбцов должно быть
-подмножеством полного набора F..U, БЕЗ повторов (один столбец не должен получать
-блюдо дважды в одном курсе) и, за вычётом заведомо неполных курсов (см.
-PARTIAL_OK), должно покрывать весь набор F..U.
+подмножеством полного набора столбцов данных, БЕЗ повторов (один столбец не
+должен получать блюдо дважды в одном курсе) и, за вычётом заведомо неполных
+курсов, перечисленных в order.PARTIAL_OK (если модуль его определяет), должно
+покрывать весь набор столбцов.
 
-Курс "боул" (ЗАВТРАК 2) намеренно не покрывает стандарт-столбцы (M..U) - боулы
-только премиум (правило #2), поэтому в PARTIAL_OK.
-Курс "запеканка" (ЗАВТРАК) намеренно не покрывает F,H,K,O,Q,S - на эту позицию
-меню нет безопасной замены, клиенты просто без неё (см. комментарий в коде).
-Курс "суп" (ОБЕД) намеренно не покрывает I - все имеющиеся супы содержат овощи,
-а I ("без овощей и рыбы") уже получает замену на курсе "салат" (йогурт).
+Запуск: python3 src/coverage.py [модуль_заказа]  (по умолчанию order_grid)
 """
-from order_grid import build_rows, COLUMNS
-
-DATA_COLS = set("FGHIJKLMNOPQRSTU")
-
-PARTIAL_OK = {
-    ("ЗАВТРАК 2", "БОУЛ ОВОЩНОЙ"),
-    ("ЗАВТРАК", "ЗАПЕКАНКА ТВОРОЖНАЯ 70 ГР."),
-    ("ОБЕД", "ЩИ С КУРИЦЕЙ"),
-}
+import importlib
+import sys
 
 
 def group_courses(rows):
@@ -38,21 +27,24 @@ def group_courses(rows):
     return groups
 
 
-def run():
-    rows = build_rows()
+def run(order_module="order_grid"):
+    order = importlib.import_module(order_module)
+    data_cols = set(order.COLUMNS) - {"D", "E"}
+    partial_ok = getattr(order, "PARTIAL_OK", set())
+
+    rows = order.build_rows()
     groups = group_courses(rows)
     issues = []
     for g in groups:
-        seen = []
         union = set()
         for r in g["rows"]:
-            cols = [c for c in r["cols"] if c in DATA_COLS]
+            cols = [c for c in r["cols"] if c in data_cols]
             dup = union & set(cols)
             if dup:
                 issues.append(f"[{g['meal']}/{g['course']}] столбцы {sorted(dup)} получают >1 блюда в этом курсе (строка {r['name']!r})")
             union |= set(cols)
-        missing = DATA_COLS - union
-        if missing and (g["meal"], g["course"]) not in PARTIAL_OK:
+        missing = data_cols - union
+        if missing and (g["meal"], g["course"]) not in partial_ok:
             issues.append(f"[{g['meal']}/{g['course']}] не покрыты столбцы {sorted(missing)}")
 
     print(f"Курсов найдено: {len(groups)}")
@@ -66,4 +58,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    run(sys.argv[1] if len(sys.argv) > 1 else "order_grid")
