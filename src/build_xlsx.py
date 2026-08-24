@@ -36,7 +36,12 @@ FONT_DISH_VAL = Font(name="Nunito", size=16, bold=True)
 ALIGN_CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
 ALIGN_LEFT = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-COL_WIDTHS = {"A": 4.75, "B": 54.88, "C": 22.88, "D": 15.88, "E": 17.63, "F": 14.63}
+# Ширины столбцов - сняты с эталонного файла (docs/ПРАВИЛА_ОБРАБОТКИ.md, раздел 3):
+# A..E - индивидуальные, F и G вместе на 14.63, все столбцы данных дальше -
+# на "ширине по умолчанию листа" эталона (12.6328125), которая шире обычного
+# дефолта Excel (~8.43) - без неё колонки выглядят у́же, чем в примере.
+COL_WIDTHS = {"A": 4.75, "B": 54.88, "C": 22.88, "D": 15.88, "E": 17.63, "F": 14.63, "G": 14.63}
+DEFAULT_DATA_COL_WIDTH = 12.6328125
 
 
 def _cell(ws, row, col_letter, value=None, font=None, fill=None, align=None, number_format=None):
@@ -65,9 +70,14 @@ def build(order, order_date, rows, out_path):
     # ширины столбцов - одинаковая логика для ВСЕХ столбцов данных, без
     # индивидуального спец-кейса для последних (это была часть жалобы: почему
     # последние столбцы выглядят иначе - в этой генерации все столбцы строятся
-    # одним циклом).
+    # одним циклом). Столбцы данных без индивидуальной ширины получают ту же
+    # "ширину по умолчанию", что и в эталонном файле, а не более узкий дефолт
+    # Excel/openpyxl - иначе они визуально уже, чем в примере.
     for letter, width in COL_WIDTHS.items():
         ws.column_dimensions[letter].width = width
+    for col in columns:
+        if col not in COL_WIDTHS:
+            ws.column_dimensions[col].width = DEFAULT_DATA_COL_WIDTH
 
     # Row 1: полоса упаковки (D - отдельно белая; премиум-столбцы серые; остальные белые)
     _cell(ws, 1, "A", fill=FILL_WHITE)

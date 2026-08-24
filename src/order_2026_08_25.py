@@ -85,7 +85,9 @@ COUNTS = {
 }
 PRODUCTION_RESERVE = 2
 COUNTS["D"] = PRODUCTION_RESERVE
-# E (БРАКЕРАЖ) сознательно не заполняем - см. docstring модуля и правило #2.
+# E (БРАКЕРАЖ) - число из текста заказа ("бракераж 1 комплект"), отправная оценка
+# (реальная вкладка на 25.08 показала другое число - кухня может его уточнить).
+COUNTS["E"] = 1
 
 EXCLUDED_CATEGORIES = {
     "F": {"грибы", "тыква"},
@@ -102,10 +104,17 @@ PREMIUM_ONLY_FOR_BOWLS = set("FGHIJ")
 
 RESERVE_ELIGIBLE_COURSES = {"салат", "суп", "горячее", "гарнир"}
 RESERVE_ELIGIBLE_MEALS = {"ОБЕД", "УЖИН"}
+BREAKFAST_MAIN_COURSES = {"каша", "запеканка", "омлет"}
 
 
 def reserve_applies(meal, course_type):
     return meal in RESERVE_ELIGIBLE_MEALS and course_type in RESERVE_ELIGIBLE_COURSES
+
+
+def brakerazh_applies(meal, course_type):
+    if reserve_applies(meal, course_type):
+        return True
+    return meal == "ЗАВТРАК" and course_type in BREAKFAST_MAIN_COURSES
 
 
 def build_rows():
@@ -113,21 +122,25 @@ def build_rows():
 
     def base(name, cols, meal, course_type=None):
         cols = list(cols)
+        extra = []
         if reserve_applies(meal, course_type):
-            cols = ["D", "E"] + cols
+            extra.append("D")
+        if brakerazh_applies(meal, course_type):
+            extra.append("E")
+        cols = extra + cols
         rows.append({"name": name, "fill": "base", "cols": cols, "meal": meal})
 
     def alt(name, cols, meal):
         rows.append({"name": name, "fill": "alt", "cols": list(cols), "meal": meal})
 
     # ЗАВТРАК ------------------------------------------------------------
-    base("РИСОВАЯ КАША 250 ГР.", "FGHIJKLMO", "ЗАВТРАК")  # молоко+сливочное масло = лактоза - без лактозы (N) уходит на "на воде"
+    base("РИСОВАЯ КАША 250 ГР.", "FGHIJKLMO", "ЗАВТРАК", "каша")  # молоко+сливочное масло = лактоза - без лактозы (N) уходит на "на воде"
     alt("РИСОВАЯ КАША 250 ГР. НА ВОДЕ", "N", "ЗАВТРАК")
 
-    base("ТЫКВЕННО-МОРКОВНЫЙ КЕКС 100 ГР.", "GHIJKLMNO", "ЗАВТРАК")  # содержит тыкву - без тыквы (F) уходит на печёное яблоко
+    base("ТЫКВЕННО-МОРКОВНЫЙ КЕКС 100 ГР.", "GHIJKLMNO", "ЗАВТРАК", "запеканка")  # содержит тыкву - без тыквы (F) уходит на печёное яблоко
     alt("ЯБЛОКО ЗАПЕЧЕННОЕ", "F", "ЗАВТРАК")
 
-    base("ОМЛЕТ С ПЕРЦЕМ И ВЕТЧИНОЙ 170 ГР.", "FGHIJKLMO", "ЗАВТРАК")  # молоко - без лактозы (N) уходит на альтернативу
+    base("ОМЛЕТ С ПЕРЦЕМ И ВЕТЧИНОЙ 170 ГР.", "FGHIJKLMO", "ЗАВТРАК", "омлет")  # молоко - без лактозы (N) уходит на альтернативу
     alt("ОМЛЕТ С ПЕРЦЕМ И ВЕТЧИНОЙ 170 ГР. БЕЗ ЛАКТОЗЫ", "N", "ЗАВТРАК")
 
     base("БУЛОЧКА ПШЕНИЧНАЯ 1 ШТ.", "FGHIJKLMNO", "ЗАВТРАК")
